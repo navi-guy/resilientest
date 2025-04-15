@@ -43,7 +43,6 @@ public class ResilientWebDriver extends ChromeDriver {
             return webElement;
         } else {
             System.out.println("Element not found, applying resilience logic.");
-            // Attempt to repair the locator
             try {
                 By repairedLocator = locatorRepaired(locator);
                 WebElement repairedElement = super.findElement(repairedLocator);
@@ -86,8 +85,6 @@ public class ResilientWebDriver extends ChromeDriver {
         Locator locator = getLocatorFromBy(locatorBy);
         String selectorType = locator.type().name();
         String selectorValue = locator.value();
-        String fullXPath = LocatorInfo.getFullXpath(locator, this);
-        String relativeXpath = LocatorInfo.getRelativeXpath(locator, this);
         Optional<WebElementDTO> webElementResult = webElementService.getElementByLastValidLocator(selectorType, selectorValue);
         if (webElementResult.isEmpty()) {
             System.out.println("Saving web element info: " + selectorType + " - " + selectorValue);
@@ -98,8 +95,8 @@ public class ResilientWebDriver extends ChromeDriver {
                     .name(webElement.getAttribute("name"))
                     .href(webElement.getAttribute("href"))
                     .alt(webElement.getAttribute("alt"))
-                    .fullXpath(fullXPath)
-                    .relativeXpath(relativeXpath)
+                    .fullXpath(getFullXpath(webElement))
+                    .relativeXpath(getRelativeXpath(webElement))
                     .innerText(webElement.getText())
                     .location(webElement.getLocation())
                     .dimension(webElement.getSize())
@@ -172,33 +169,77 @@ public class ResilientWebDriver extends ChromeDriver {
                     .innerText(element.getText())
                     .location(element.getLocation())
                     .dimension(element.getSize())
-                    .isButton(element.getTagName().equals("button"))
+                    .isButton(element.getTagName().equals("button")) // TODO: add more logic to determine if it is a button (clickable, etc)
                     .neighborElements(neighborElements.getNeighborTags())
                     .neighborElementsText(neighborElements.getNeighborTexts())
                     .build();
             // Calculate the similarity score between the broken element and each element
-            int score = calculateSimilarityScore(currentElement, elementToCompare);
+            double score = calculateSimilarityScore(currentElement, elementToCompare);
             scoredElements.add(ElementScore.of(element, score));
         }
         // Sort the scored elements by the similarity score in descending order
-        scoredElements.sort((e1, e2) -> Integer.compare(e2.score(), e1.score()));
+        scoredElements.sort((e1, e2) -> Double.compare(e2.score(), e1.score()));
 
         // Return the most similar element's locator
-        WebElement mostSimilarElement = scoredElements.get(0).element();
-
-        By locatorx = By.xpath("//button");
-        try {
-            findElement(locatorx);
-        } catch (NoSuchElementException e) {
+        double scoreThreshold = 0.8; // Define a threshold for similarity
+        if ( !scoredElements.isEmpty() && scoredElements.getFirst().score() > scoreThreshold) {
+            WebElement mostSimilarElement = scoredElements.getFirst().element();
+            String xpathRepaired = getRelativeXpath(mostSimilarElement);
+            return By.xpath(xpathRepaired);
+        } else {
             throw new NoReparableElement("Element cannot be repaired");
         }
 
-        return locatorx;
     }
 
-    private int calculateSimilarityScore(WebElementDTO element1, WebElementDTO element2) {
-        int attributeIdScore = (element1.idAttribute() != null && element1.idAttribute().equals(element2.idAttribute())) ? 1 : 0;
-        // TODO: Add more attribute comparisons as needed
-        return 1;
+    private double calculateSimilarityScore(WebElementDTO element1, WebElementDTO element2) {
+        SimilarityScore similarityScore = new SimilarityScore(element1, element2);
+        return similarityScore.getSimilarityScore();
+    }
+
+    private String getRelativeXpath(WebElement element) {
+        JavascriptExecutor jsExecutor =  this;
+        return (String) jsExecutor.executeScript(
+                "function getRelativeXPath(element) {" +
+                        "    if (element.id) return `//*[@id=\"${element.id}\"]`;" +
+                        "    let parts = [];" +
+                        "    while (element && element.nodeType === Node.ELEMENT_NODE) {" +
+                        "        let tag = element.nodeName.toLowerCase();" +
+                        "        if (element.id) {" +
+                        "            parts.unshift(`//*[@id=\"${element.id}\"]`);" +
+                        "            break;" +
+                        "        } else {" +
+                        "            let sameTags = Array.from(element.parentNode.children).filter(e => e.nodeName === element.nodeName);" +
+                        "            let index = sameTags.indexOf(element) + 1;" +
+                        "            parts.unshift(tag + (sameTags.length > 1 ? `[${index}]` : ''));" +
+                        "        }" +
+                        "        element = element.parentNode;" +
+                        "    }" +
+                        "    let relativeXpath =  '//' + parts.join('/');" +
+                        "    return relativeXpath.replace('////', '//');" +
+                        "}" +
+                        "return getRelativeXPath(arguments[0]);", element);
+    }
+
+    private String getFullXpath(WebElement element) {
+        JavascriptExecutor jsExecutor =  this;
+        return(String) jsExecutor.executeScript(
+                "function getElementFullXPath(element) {" +
+                        "   var path = [];" +
+                        "   while (element.nodeType === Node.ELEMENT_NODE) {" +
+                        "       var index = 1;" +
+                        "       var sibling = element.previousSibling;" +
+                        "       while (sibling) {" +
+                        "           if (sibling.nodeType === Node.ELEMENT_NODE && sibling.tagName === element.tagName) {" +
+                        "               index++;" +
+                        "           }" +
+                        "           sibling = sibling.previousSibling;" +
+                        "       }" +
+                        "       path.unshift(element.tagName.toLowerCase() + (index > 1 ? '[' + index + ']' : ''));" +
+                        "       element = element.parentNode;" +
+                        "   }" +
+                        "   return path.length ? '/' + path.join('/') : null;" +
+                        "}" +
+                        "return getElementFullXPath(arguments[0]);", element);
     }
 }
