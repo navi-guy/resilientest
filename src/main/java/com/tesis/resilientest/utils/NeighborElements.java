@@ -1,62 +1,76 @@
 package com.tesis.resilientest.utils;
 
 import org.openqa.selenium.By;
+import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
+import org.openqa.selenium.support.locators.RelativeLocator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.List;
 
 public class NeighborElements {
-    private WebElement centralElement;
-    private WebElement left;
-    private WebElement right;
-    private WebElement above;
-    private WebElement below;
+    private static final Logger log = LoggerFactory.getLogger(NeighborElements.class);
 
-    public NeighborElements(WebElement centralElement) {
-        this.centralElement = centralElement;
-        this.left = findNeighbor(By.xpath("preceding-sibling::*[1]"));
-        this.right = findNeighbor(By.xpath("following-sibling::*[1]"));
-        this.above = findNeighbor(By.xpath(".."));
-        this.below = findNeighbor(By.xpath("./*"));
+    private final WebDriver driver;
+    private final WebElement left;
+    private final WebElement right;
+    private final WebElement above;
+    private final WebElement below;
+
+    public NeighborElements(WebElement centralElement, WebDriver driver) {
+        log.info("Begin constructor NeighborElements");
+        this.driver = driver;
+        log.info("BEGIN FindNeighbour way 1");
+        this.left = findNeighbour(RelativeLocator.with(By.cssSelector("*")).toLeftOf(centralElement));
+        log.info("END FindNeighbour way 1");
+        this.right = findNeighbour(RelativeLocator.with(By.cssSelector("*")).toRightOf(centralElement));
+        this.above = findNeighbour(RelativeLocator.with(By.cssSelector("*")).above(centralElement));
+        this.below = findNeighbour(RelativeLocator.with(By.cssSelector("*")).below(centralElement));
+        log.info("End of constructor NeighborElements");
     }
 
-    private WebElement findNeighbor(By locator) {
-        try {
-            return centralElement.findElement(locator);
-        } catch (Exception e) {
-            return null;
-        }
+    private WebElement findNeighbour(By locator) {
+        List<WebElement> elements = this.driver.findElements(locator);
+        return elements.isEmpty() ? null: elements.getFirst();
     }
 
-    public String getNeighborTexts() {
-        String texts = "";
+    private WebElement findNeighbour2(By locator, WebElement centralElement) {
+        List<WebElement> elements = centralElement.findElements(locator);
+        return elements.isEmpty() ? null: elements.getFirst();
+    }
+
+    public String getNeighbourTags() {
+        StringBuilder tags = new StringBuilder();
         if (left != null) {
-            texts += left.getText() + " ";
+            tags.append(left.getTagName()).append(" ");
         }
         if (right != null) {
-            texts += right.getText() + " ";
+            tags.append(right.getTagName()).append(" ");
         }
         if (above != null) {
-            texts += above.getText() + " ";
+            tags.append(above.getTagName()).append(" ");
         }
         if (below != null) {
-            texts += below.getText();
+            tags.append(below.getTagName());
         }
-        return texts.trim();
+        return tags.toString();
     }
 
-    public String getNeighborTags() {
-        String tags = "";
-        if (left != null) {
-            tags += left.getTagName() + " ";
+    public String getNeighbourText() {
+        StringBuilder text = new StringBuilder();
+        if (left != null && !left.getText().isEmpty()) {
+            text.append(left.getText()).append(" ");
         }
-        if (right != null) {
-            tags += right.getTagName() + " ";
+        if (right != null && !right.getText().isEmpty()) {
+            text.append(right.getText()).append(" ");
         }
-        if (above != null) {
-           tags += above.getTagName() + " ";
+        if (above != null && !above.getText().isEmpty()) {
+            text.append(above.getText()).append(" ");
         }
-        if (below != null) {
-            tags += below.getTagName() ;
+        if (below != null && !below.getText().isEmpty()) {
+            text.append(below.getText());
         }
-        return tags.trim();
+        return text.toString();
     }
 }

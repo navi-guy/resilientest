@@ -42,8 +42,8 @@ public record WebElementDTO(
         private String lastValidTypeSelector = "";
         private String lastValidSelector = "";
         private String elementScreenshotPath = "";
-        private String neighborElements;
-        private String neighborElementsText;
+        private String neighborElements = "";
+        private String neighborElementsText = "";
         private int domPageId;
 
         public Builder id(Integer id) {

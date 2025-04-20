@@ -73,3 +73,8 @@ In the `src/main/java/com/resilientest/scripts` directory, you can find the test
 
 Run the test script using the IDE with anti-clic on the file and selecting "Run 'LoginPageTest'".
 
+### Steps to make it work
+
+1. Run the test script on 100% success in order to get the correct locators in the database.
+2. Change the URL of the bagisto application to v2
+3. Run again to check if the ResilientWebdriver can handle the new changes. 

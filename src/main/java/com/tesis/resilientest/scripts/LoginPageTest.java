@@ -7,6 +7,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.openqa.selenium.WebDriver;
+
 import java.time.Duration;
 
 
@@ -20,7 +21,8 @@ public class LoginPageTest {
         driver = new ResilientWebDriver();
         driver.manage().window().maximize();
         driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
-        driver.get("http://bagisto-v1.test/customer/login");// THIS IS LOCAL URL
+        driver.get("http://bagisto-v1.test/customer/login");// Version 1
+   //     driver.get("http://bagisto-v2.test/customer/login");//  Version 2
     }
 
     @Step("Close Login page")
@@ -36,7 +38,7 @@ public class LoginPageTest {
     @Owner("Henry Aliaga")
     @Test
     public void login() {
-        LoginPage loginPage = new LoginPage((ResilientWebDriver) driver);
+        LoginPage loginPage = new LoginPage(driver);
         loginPage.verifyHeader();
         loginPage.fillCredentials("navi@gmail.com", "Prueba123");
         loginPage.submit();
